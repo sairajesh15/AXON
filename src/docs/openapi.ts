@@ -63,6 +63,66 @@ export const openApiDocument: OpenApiDocument = {
 				},
 			},
 		},
+		"/api/chat": {
+			post: {
+				tags: ["Chat"],
+				summary: "Send a message to the AI Attendance Chatbot",
+				description: "Processes a user message and returns the chatbot's response. Requires a valid session token.",
+				operationId: "postChat",
+				security: [
+					{
+						bearerAuth: [],
+					},
+				],
+				requestBody: {
+					required: true,
+					content: {
+						"application/json": {
+							schema: {
+								type: "object",
+								required: ["message"],
+								properties: {
+									message: {
+										type: "string",
+										description: "The user's message to the chatbot",
+										example: "What is my current attendance?",
+									},
+									sessionId: {
+										type: "string",
+										description: "Optional session ID for keeping track of the conversation context",
+										example: "sess_123456",
+									},
+								},
+							},
+						},
+					},
+				},
+				responses: {
+					"200": {
+						description: "Successfully processed the chat message.",
+						content: {
+							"application/json": {
+								schema: {
+									type: "object",
+									properties: {
+										data: {
+											type: "object",
+											description: "The response data from the chatbot",
+										},
+									},
+								},
+							},
+						},
+					},
+					"400": {
+						description: "Bad Request (e.g., Student profile not found)",
+					},
+					"401": {
+						description: "Unauthorized (Missing or invalid token)",
+					},
+				},
+			},
+		},
 	},
 	components: {
 		schemas: {
@@ -114,6 +174,14 @@ export const openApiDocument: OpenApiDocument = {
 						type: "string",
 					},
 				},
+			},
+		},
+		securitySchemes: {
+			bearerAuth: {
+				type: "http",
+				scheme: "bearer",
+				bearerFormat: "JWT", // Or whichever format the token is
+				description: "Enter your session token (without 'Bearer ' prefix).",
 			},
 		},
 	},

@@ -10,3 +10,9 @@ migrations/
 .env.example
 .env.development
 .env.production
+
+# Compiled Prisma config files
+prisma.config.js
+prisma.config.js.map
+prisma.config.d.ts
+prisma.config.d.ts.map

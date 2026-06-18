@@ -1,7 +1,9 @@
 import { toNodeHandler } from "better-auth/node";
 import cors from "cors";
 import express, { type Express } from "express";
-import { auth } from "./auth";
+import chatRoutes from "@/features/ai-agents/routes/chat-routes";
+import attendanceRoutes from "@/features/attendance/routes/attendance-routes";
+import { auth } from "@/features/authentication/services/auth-service";
 import { env } from "./config/env";
 import { registerSwaggerDocs } from "./docs/swagger";
 import { healthRouter } from "./features/health/routes/health-routes";
@@ -26,6 +28,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/health", healthRouter);
+app.use("/api/attendance", attendanceRoutes);
+app.use("/api/chat", chatRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

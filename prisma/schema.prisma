@@ -17,6 +17,7 @@ model User {
 
   sessions      Session[]
   accounts      Account[]
+  student       Student?
 
   @@map("users")
 }
@@ -65,4 +66,130 @@ model Verification {
   updatedAt  DateTime @updatedAt
 
   @@map("verifications")
+}
+
+model Student {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  rollNumber   String   @unique
+  name         String
+  email        String
+  course       String
+  year         Int
+  semester     Int
+  department   String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user              User                @relation(fields: [userId], references: [id])
+  enrollments       Enrollment[]
+  attendanceRecords AttendanceRecord[]
+  attendanceSummary AttendanceSummary[]
+  alertLogs         AlertLog[]
+  chatSessions      ChatSession[]
+}
+
+model Subject {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  department   String
+  totalClasses Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  enrollments       Enrollment[]
+  attendanceRecords AttendanceRecord[]
+  attendanceSummary AttendanceSummary[]
+}
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  studentId String
+  subjectId String
+  createdAt DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@unique([studentId, subjectId])
+}
+
+model AttendanceRecord {
+  id        String           @id @default(cuid())
+  studentId String
+  subjectId String
+  date      DateTime
+  status    AttendanceStatus
+  markedBy  String
+  createdAt DateTime         @default(now())
+
+  student Student @relation(fields: [studentId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@unique([studentId, subjectId, date])
+}
+
+model AttendanceSummary {
+  id            String    @id @default(cuid())
+  studentId     String
+  subjectId     String
+  totalClasses  Int       @default(0)
+  attended      Int       @default(0)
+  percentage    Float     @default(0)
+  riskTier      RiskTier  @default(SAFE)
+  lastUpdated   DateTime  @default(now())
+
+  student Student @relation(fields: [studentId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@unique([studentId, subjectId])
+}
+
+model AlertLog {
+  id        String      @id @default(cuid())
+  studentId String
+  subjectId String
+  alertType AlertType
+  sentAt    DateTime    @default(now())
+  channel   String      @default("EMAIL")
+  status    AlertStatus
+  payload   Json?
+
+  student Student @relation(fields: [studentId], references: [id])
+}
+
+model ChatSession {
+  id        String   @id @default(cuid())
+  studentId String
+  messages  Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+enum RiskTier {
+  SAFE
+  EARLY_WARNING
+  DETENTION_RISK
+  CRITICAL
+}
+
+enum AlertType {
+  EARLY_WARNING
+  DETENTION_RISK
+  CRITICAL
+}
+
+enum AlertStatus {
+  SENT
+  FAILED
+  SKIPPED
 }

@@ -1,3 +1,4 @@
+import { startAttendanceScanJob } from "@/features/alerts/jobs/attendance-scan.job";
 import { app } from "./app";
 import { env } from "./config/env";
 import { prisma } from "./database";
@@ -6,6 +7,7 @@ async function bootstrap() {
 	try {
 		await prisma.$connect();
 		console.log("Database connected");
+		startAttendanceScanJob();
 
 		app.listen(env.PORT, () => {
 			console.log(`Server running on http://localhost:${env.PORT} [${env.NODE_ENV}]`);

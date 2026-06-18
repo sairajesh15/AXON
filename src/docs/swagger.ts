@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import swaggerUi from "swagger-ui-express";
-import { auth } from "../auth";
+import { auth } from "@/features/authentication/services/auth-service";
 import { openApiDocument } from "./openapi";
 
 const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "options", "head"] as const;
