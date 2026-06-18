@@ -87,6 +87,12 @@ model Student {
   attendanceSummary AttendanceSummary[]
   alertLogs         AlertLog[]
   chatSessions      ChatSession[]
+  codingActivities  CodingActivity[]
+  dailyCodingLogs   DailyCodingLog[]
+  codingTopics      CodingTopic[]
+  platformUsernames PlatformUsername[]
+  studentGoal       StudentGoal?
+  studyPlans        StudyPlan[]
 }
 
 model Subject {
@@ -192,4 +198,76 @@ enum AlertStatus {
   SENT
   FAILED
   SKIPPED
+}
+
+model CodingActivity {
+  id             String  @id @default(cuid())
+  studentId      String
+  platform       String
+  problemsSolved Int
+  topic          String?
+  difficulty     String?
+  streakDays     Int     @default(0)
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("coding_activities")
+}
+
+model DailyCodingLog {
+  id        String   @id @default(cuid())
+  studentId String
+  date      DateTime
+  platform  String
+  solved    Int
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date, platform])
+  @@map("daily_coding_logs")
+}
+
+model CodingTopic {
+  id         String @id @default(cuid())
+  studentId  String
+  topicName  String
+  solved     Int
+  
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, topicName])
+  @@map("coding_topics")
+}
+
+model PlatformUsername {
+  id        String @id @default(cuid())
+  studentId String
+  platform  String
+  username  String
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("platform_usernames")
+}
+
+model StudentGoal {
+  id           String @id @default(cuid())
+  studentId    String @unique
+  weeklyTarget Int
+  
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("student_goals")
+}
+
+model StudyPlan {
+  id           String   @id @default(cuid())
+  studentId    String
+  title        String
+  objective    String
+  days         Json
+  createdAt    DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  @@map("study_plans")
 }

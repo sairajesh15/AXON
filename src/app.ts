@@ -3,6 +3,7 @@ import cors from "cors";
 import express, { type Express } from "express";
 import chatRoutes from "@/features/ai-agents/routes/chat-routes";
 import attendanceRoutes from "@/features/attendance/routes/attendance-routes";
+import codingRoutes from "@/features/coding/coding.routes";
 import { auth } from "@/features/authentication/services/auth-service";
 import { env } from "./config/env";
 import { registerSwaggerDocs } from "./docs/swagger";
@@ -30,6 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/health", healthRouter);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/student", codingRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
