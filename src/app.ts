@@ -15,7 +15,7 @@ const app: Express = express();
 
 app.use(
 	cors({
-		origin: env.BETTER_AUTH_URL,
+		origin: [env.BETTER_AUTH_URL, "http://localhost:5173"],
 		credentials: true,
 	}),
 );

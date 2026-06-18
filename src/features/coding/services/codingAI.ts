@@ -17,29 +17,11 @@ const codingLLM = new ChatOllama({
   temperature: 0.3, // Slightly higher than 0.1 for more natural language
 }).withStructuredOutput(recommendationSchema);
 
-export async function generateRecommendationsFromStats(
-  name: string,
-  totalSolved: number,
-  maxStreak: number,
-  activePlatforms: string
-) {
-  const systemPrompt = `You are Axon Intelligence, a friendly, highly accurate AI coding mentor for ${name}.
-Student's Current Stats:
-- Total Problems Solved: ${totalSolved}
-- Longest Streak: ${maxStreak} days
-- Platforms: ${activePlatforms || "None yet"}
-
-Based on these stats, generate a brief, encouraging summary and exactly 2 specific study topics (tailored to their skill level, e.g. Arrays/Strings for beginners, or DP/Segment Trees for advanced coders) they should tackle next to level up. Give realistic estimated study times in minutes. Output strictly in the requested JSON format. Do not hallucinate data.`;
-
-  const response = await codingLLM.invoke([
-    ["system", systemPrompt]
-  ]);
-
-  return response;
-}
-
 export async function generateCodingRecommendations(studentId: string) {
-  const student = await prisma.student.findUnique({ where: { id: studentId } });
+  const student = await prisma.student.findUnique({ 
+    where: { id: studentId },
+    include: { codingTopics: true }
+  });
   if (!student) throw new Error("Student not found");
 
   const activities = await prisma.codingActivity.findMany({ where: { studentId } });
@@ -47,8 +29,22 @@ export async function generateCodingRecommendations(studentId: string) {
   const totalSolved = activities.reduce((acc: any, curr: any) => acc + curr.problemsSolved, 0);
   const maxStreak = activities.reduce((acc: any, curr: any) => Math.max(acc, curr.streakDays), 0);
   const activePlatforms = activities.map((a: any) => `${a.platform} (${a.problemsSolved} solved)`).join(', ');
+  const weakTopics = student.codingTopics.sort((a, b) => a.solved - b.solved).slice(0, 3).map(t => t.topicName).join(', ');
 
-  return generateRecommendationsFromStats(student.name, totalSolved, maxStreak, activePlatforms);
+  const systemPrompt = `You are Axon Intelligence, a friendly, highly accurate AI coding mentor for ${student.name}.
+Student's Current Stats:
+- Total Problems Solved: ${totalSolved}
+- Longest Streak: ${maxStreak} days
+- Platforms: ${activePlatforms || "None yet"}
+- Topics Needing Improvement: ${weakTopics || "Not enough data yet"}
+
+Based on these stats, generate a brief, encouraging summary and exactly 2 specific study topics they should tackle next to level up. Do not repeat generic advice. Address their weak topics specifically if available, or suggest completely new challenges if they are doing well. Randomize the focus area slightly (e.g., focus on time complexity optimization, or maybe graph algorithms today) so the advice feels fresh every time. Give realistic estimated study times in minutes. Output strictly in the requested JSON format.`;
+
+  const response = await codingLLM.invoke([
+    ["system", systemPrompt]
+  ]);
+
+  return response;
 }
 
 const plannerSchema = z.object({
@@ -69,19 +65,24 @@ const plannerLLM = new ChatOllama({
 }).withStructuredOutput(plannerSchema);
 
 export async function generateCodingPlanner(studentId: string) {
-  const student = await prisma.student.findUnique({ where: { id: studentId } });
+  const student = await prisma.student.findUnique({ 
+    where: { id: studentId },
+    include: { codingTopics: true }
+  });
   if (!student) throw new Error("Student not found");
 
   const activities = await prisma.codingActivity.findMany({ where: { studentId } });
   const totalSolved = activities.reduce((acc: any, curr: any) => acc + curr.problemsSolved, 0);
   const activePlatforms = activities.map((a: any) => `${a.platform} (${a.problemsSolved} solved)`).join(', ');
+  const weakTopics = student.codingTopics.sort((a, b) => a.solved - b.solved).slice(0, 3).map(t => t.topicName).join(', ');
 
   const systemPrompt = `You are Axon Intelligence, generating a structured 7-day Coding Health Planner for ${student.name}.
 Student's Current Stats:
 - Total Solved: ${totalSolved}
 - Platforms: ${activePlatforms || "None yet"}
+- Topics Needing Improvement: ${weakTopics || "Not enough data yet"}
 
-Generate a detailed, progressive 7-day study plan to improve their coding health. Tailor the topics strictly to their skill level based on how many problems they have solved (e.g., basic loops and arrays for <50 solved, trees and dynamic programming for >300 solved). Give a variety of topics, do not stick to just one. Output strictly in the requested JSON format.`;
+Generate a detailed, progressive 7-day study plan to improve their coding health. Incorporate their weak topics specifically on at least 2 of the days. Tailor the overall topics strictly to their skill level based on how many problems they have solved. Create a fresh, highly diverse plan that does not just repeat the same generic structures. Give a variety of topics. Output strictly in the requested JSON format.`;
 
   const planResponse = await plannerLLM.invoke([
     ["system", systemPrompt]
