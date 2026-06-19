@@ -8,7 +8,7 @@ export async function chatHandler(req: Request, res: Response, next: NextFunctio
 
 		// Extract token from Authorization header, handling potential duplicate 'Bearer ' prefixes
 		const authHeader = req.headers.authorization;
-		if (!authHeader || !authHeader.startsWith("Bearer ")) {
+		if (!authHeader?.startsWith("Bearer ")) {
 			res.status(401).json({ message: "Unauthorized. Please provide a Bearer token." });
 			return;
 		}
@@ -23,7 +23,7 @@ export async function chatHandler(req: Request, res: Response, next: NextFunctio
 			include: { user: { include: { student: true } } },
 		});
 
-		if (!session || !session.user || !session.user.student) {
+		if (!session?.user?.student) {
 			res.status(400).json({ message: "Student profile not found for this session." });
 			return;
 		}

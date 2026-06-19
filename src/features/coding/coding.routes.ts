@@ -1,61 +1,63 @@
-import { Router } from 'express';
-import { prisma } from '../../database';
-import { addOrUpdatePlatformUsername, ingestCodingForStudent } from './services/codingService';
-import { generateCodingRecommendations, generateCodingPlanner } from './services/codingAI';
+import { Router } from "express";
+import { prisma } from "../../database";
+import { generateCodingPlanner, generateCodingRecommendations } from "./services/codingAI";
+import { addOrUpdatePlatformUsername, ingestCodingForStudent } from "./services/codingService";
 
-const router = Router();
+const router: Router = Router();
 
-router.get('/:id/dashboard', async (req, res): Promise<void> => {
-  try {
-    const id = req.params.id as string;
-    const student = await prisma.student.findFirst({
-      where: { OR: [{ id }, { userId: id }] },
-      include: {
-        codingActivities: true,
-        attendanceSummary: { include: { subject: true } },
-        dailyCodingLogs: true,
-        codingTopics: true,
-        studentGoal: true
-      }
-    });
-    
-    if (!student) {
-      res.status(404).json({ error: 'Student not found' });
-      return;
-    }
+router.get("/:id/dashboard", async (req, res): Promise<void> => {
+	try {
+		const id = req.params.id as string;
+		const student = await prisma.student.findFirst({
+			where: { OR: [{ id }, { userId: id }] },
+			include: {
+				codingActivities: true,
+				attendanceSummary: { include: { subject: true } },
+				dailyCodingLogs: true,
+				codingTopics: true,
+				studentGoal: true,
+			},
+		});
 
-    const avgAttendance = student.attendanceSummary.length > 0 
-      ? student.attendanceSummary.reduce((acc: any, curr: any) => acc + curr.percentage, 0) / student.attendanceSummary.length
-      : 85;
+		if (!student) {
+			res.status(404).json({ error: "Student not found" });
+			return;
+		}
 
-    const courses = student.attendanceSummary.map((summary: any) => ({
-      courseId: summary.subjectId,
-      courseName: summary.subject.name,
-      currentPercentage: summary.percentage,
-      riskTier: summary.riskTier
-    }));
+		const avgAttendance =
+			student.attendanceSummary.length > 0
+				? student.attendanceSummary.reduce((acc: any, curr: any) => acc + curr.percentage, 0) /
+					student.attendanceSummary.length
+				: 85;
 
-    res.json({
-      student,
-      avgAttendance,
-      coding: student.codingActivities,
-      courses,
-      risk: { overallRisk: 100 - avgAttendance },
-      dailyLogs: student.dailyCodingLogs,
-      topics: student.codingTopics,
-      goal: student.studentGoal
-    });
-  } catch (error) {
-    console.error('Error fetching dashboard:', error);
-    res.status(500).json({ error: 'Failed to fetch dashboard' });
-  }
+		const courses = student.attendanceSummary.map((summary: any) => ({
+			courseId: summary.subjectId,
+			courseName: summary.subject.name,
+			currentPercentage: summary.percentage,
+			riskTier: summary.riskTier,
+		}));
+
+		res.json({
+			student,
+			avgAttendance,
+			coding: student.codingActivities,
+			courses,
+			risk: { overallRisk: 100 - avgAttendance },
+			dailyLogs: student.dailyCodingLogs,
+			topics: student.codingTopics,
+			goal: student.studentGoal,
+		});
+	} catch (error) {
+		console.error("Error fetching dashboard:", error);
+		res.status(500).json({ error: "Failed to fetch dashboard" });
+	}
 });
 
 router.get('/:id/coding/mappings', async (req, res): Promise<void> => {
   try {
     const id = req.params.id as string;
     const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) { res.status(404).json({ error: 'Student not found' }); return; }
+    if (!student) return res.status(404).json({ error: 'Student not found' });
     const mappings = await prisma.platformUsername.findMany({ where: { studentId: student.id } });
     res.json(mappings);
   } catch (error) {
@@ -64,78 +66,85 @@ router.get('/:id/coding/mappings', async (req, res): Promise<void> => {
   }
 });
 
-router.post('/:id/coding/mapping', async (req, res): Promise<void> => {
-  try {
-    const id = req.params.id as string;
-    const { platform, username, rawData } = req.body;
-    if (!platform || !username) {
-      res.status(400).json({ error: 'Missing platform or username' });
-      return;
-    }
+router.post("/:id/coding/mapping", async (req, res): Promise<void> => {
+	try {
+		const id = req.params.id as string;
+		const { platform, username, rawData } = req.body;
+		if (!platform || !username) {
+			res.status(400).json({ error: "Missing platform or username" });
+			return;
+		}
 
-    const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) {
-      res.status(404).json({ error: 'Student not found' });
-      return;
-    }
+		const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
+		if (!student) {
+			res.status(404).json({ error: "Student not found" });
+			return;
+		}
 
-    // Trigger immediate ingest first to validate
-    const ingestResult = await ingestCodingForStudent({ email: student.email, platform, username, rawData });
-    if (ingestResult.status !== 200) {
-      res.status(400).json({ error: (ingestResult as any).error || 'Invalid username or platform error' });
-      return;
-    }
+		// Trigger immediate ingest first to validate
+		const ingestResult = await ingestCodingForStudent({
+			email: student.email,
+			platform,
+			username,
+			rawData,
+		});
+		if (ingestResult.status !== 200) {
+			res
+				.status(400)
+				.json({ error: (ingestResult as any).error || "Invalid username or platform error" });
+			return;
+		}
 
-    // Save only after successful validation
-    await addOrUpdatePlatformUsername({ email: student.email, platform, username });
+		// Save only after successful validation
+		await addOrUpdatePlatformUsername({ email: student.email, platform, username });
 
-    res.json({ success: true, platform, username });
-  } catch (error) {
-    console.error('Error linking platform:', error);
-    res.status(500).json({ error: 'Failed to link platform' });
-  }
+		res.json({ success: true, platform, username });
+	} catch (error) {
+		console.error("Error linking platform:", error);
+		res.status(500).json({ error: "Failed to link platform" });
+	}
 });
 
-router.delete('/:id/coding/mapping/:platform', async (req, res): Promise<void> => {
-  try {
-    const id = req.params.id as string;
-    const platform = req.params.platform as string;
-    
-    const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) {
-      res.status(404).json({ error: 'Student not found' });
-      return;
-    }
+router.delete("/:id/coding/mapping/:platform", async (req, res): Promise<void> => {
+	try {
+		const id = req.params.id as string;
+		const platform = req.params.platform as string;
 
-    // Delete mapping
-    await prisma.platformUsername.deleteMany({
-      where: { studentId: student.id, platform: { equals: platform, mode: 'insensitive' } }
-    });
+		const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
+		if (!student) {
+			res.status(404).json({ error: "Student not found" });
+			return;
+		}
 
-    // Delete associated data
-    await prisma.codingActivity.deleteMany({
-      where: { studentId: student.id, platform: { equals: platform, mode: 'insensitive' } }
-    });
-    
-    await prisma.dailyCodingLog.deleteMany({
-      where: { studentId: student.id, platform: { equals: platform, mode: 'insensitive' } }
-    });
-    
-    // We optionally keep codingTopics as they might be shared, but if you want to reset them completely:
-    // await prisma.codingTopic.deleteMany({ where: { studentId: student.id } });
+		// Delete mapping
+		await prisma.platformUsername.deleteMany({
+			where: { studentId: student.id, platform: { equals: platform, mode: "insensitive" } },
+		});
 
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error unlinking platform:', error);
-    res.status(500).json({ error: 'Failed to unlink platform' });
-  }
+		// Delete associated data
+		await prisma.codingActivity.deleteMany({
+			where: { studentId: student.id, platform: { equals: platform, mode: "insensitive" } },
+		});
+
+		await prisma.dailyCodingLog.deleteMany({
+			where: { studentId: student.id, platform: { equals: platform, mode: "insensitive" } },
+		});
+
+		// We optionally keep codingTopics as they might be shared, but if you want to reset them completely:
+		// await prisma.codingTopic.deleteMany({ where: { studentId: student.id } });
+
+		res.json({ success: true });
+	} catch (error) {
+		console.error("Error unlinking platform:", error);
+		res.status(500).json({ error: "Failed to unlink platform" });
+	}
 });
 
 router.post('/:id/coding/recommendations', async (req, res): Promise<void> => {
   try {
     const id = req.params.id as string;
     const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) { res.status(404).json({ error: 'Student not found' }); return; }
+    if (!student) return res.status(404).json({ error: 'Student not found' });
     const recommendations = await generateCodingRecommendations(student.id);
     res.json(recommendations);
   } catch (error) {
@@ -144,38 +153,38 @@ router.post('/:id/coding/recommendations', async (req, res): Promise<void> => {
   }
 });
 
-router.post('/:id/coding/goal', async (req, res): Promise<void> => {
-  try {
-    const id = req.params.id as string;
-    const { weeklyTarget } = req.body;
-    
-    if (typeof weeklyTarget !== 'number') {
-      res.status(400).json({ error: 'Invalid weekly target' });
-      return;
-    }
+router.post("/:id/coding/goal", async (req, res): Promise<void> => {
+	try {
+		const id = req.params.id as string;
+		const { weeklyTarget } = req.body;
+
+		if (typeof weeklyTarget !== "number") {
+			res.status(400).json({ error: "Invalid weekly target" });
+			return;
+		}
 
     const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) { res.status(404).json({ error: 'Student not found' }); return; }
+    if (!student) return res.status(404).json({ error: 'Student not found' });
 
-    const existing = await prisma.studentGoal.findUnique({ where: { studentId: student.id } });
-    if (existing) {
-      await prisma.studentGoal.update({ where: { id: existing.id }, data: { weeklyTarget } });
-    } else {
-      await prisma.studentGoal.create({ data: { studentId: student.id, weeklyTarget } });
-    }
-    
-    res.json({ success: true, weeklyTarget });
-  } catch (error) {
-    console.error('Error setting goal:', error);
-    res.status(500).json({ error: 'Failed to set goal' });
-  }
+		const existing = await prisma.studentGoal.findUnique({ where: { studentId: student.id } });
+		if (existing) {
+			await prisma.studentGoal.update({ where: { id: existing.id }, data: { weeklyTarget } });
+		} else {
+			await prisma.studentGoal.create({ data: { studentId: student.id, weeklyTarget } });
+		}
+
+		res.json({ success: true, weeklyTarget });
+	} catch (error) {
+		console.error("Error setting goal:", error);
+		res.status(500).json({ error: "Failed to set goal" });
+	}
 });
 
 router.post('/:id/coding/plan', async (req, res): Promise<void> => {
   try {
     const id = req.params.id as string;
     const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) { res.status(404).json({ error: 'Student not found' }); return; }
+    if (!student) return res.status(404).json({ error: 'Student not found' });
     const plan = await generateCodingPlanner(student.id);
     res.json(plan);
   } catch (error) {
@@ -188,7 +197,7 @@ router.get('/:id/coding/plan', async (req, res): Promise<void> => {
   try {
     const id = req.params.id as string;
     const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) { res.status(404).json({ error: 'Student not found' }); return; }
+    if (!student) return res.status(404).json({ error: 'Student not found' });
     const plan = await prisma.studyPlan.findFirst({
       where: { studentId: student.id },
       orderBy: { createdAt: 'desc' }
@@ -200,55 +209,61 @@ router.get('/:id/coding/plan', async (req, res): Promise<void> => {
   }
 });
 
-router.post('/:id/coding/solve', async (req, res): Promise<void> => {
-  try {
-    const id = req.params.id as string;
-    const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) {
-      res.status(404).json({ error: 'Student not found' });
-      return;
-    }
+router.post("/:id/coding/solve", async (req, res): Promise<void> => {
+	try {
+		const id = req.params.id as string;
+		const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
+		if (!student) {
+			res.status(404).json({ error: "Student not found" });
+			return;
+		}
 
-    // Increment overall solved count for the first connected platform, or a generic 'Practice' platform
-    let platform = 'Practice';
-    const firstPlatform = await prisma.platformUsername.findFirst({ where: { studentId: student.id } });
-    if (firstPlatform) platform = firstPlatform.platform;
+		// Increment overall solved count for the first connected platform, or a generic 'Practice' platform
+		let platform = "Practice";
+		const firstPlatform = await prisma.platformUsername.findFirst({
+			where: { studentId: student.id },
+		});
+		if (firstPlatform) platform = firstPlatform.platform;
 
-    const existingActivity = await prisma.codingActivity.findFirst({ where: { studentId: student.id, platform } });
-    if (existingActivity) {
-      await prisma.codingActivity.update({
-        where: { id: existingActivity.id },
-        data: { problemsSolved: existingActivity.problemsSolved + 1 }
-      });
-    } else {
-      await prisma.codingActivity.create({
-        data: { studentId: student.id, platform, problemsSolved: 1, streakDays: 1 }
-      });
-    }
+		const existingActivity = await prisma.codingActivity.findFirst({
+			where: { studentId: student.id, platform },
+		});
+		if (existingActivity) {
+			await prisma.codingActivity.update({
+				where: { id: existingActivity.id },
+				data: { problemsSolved: existingActivity.problemsSolved + 1 },
+			});
+		} else {
+			await prisma.codingActivity.create({
+				data: { studentId: student.id, platform, problemsSolved: 1, streakDays: 1 },
+			});
+		}
 
-    // Log for today
-    const now = new Date();
-    const normalizedDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const existingLog = await prisma.dailyCodingLog.findFirst({
-      where: { studentId: student.id, platform, date: normalizedDate }
-    });
-    
-    if (existingLog) {
-      await prisma.dailyCodingLog.update({
-        where: { id: existingLog.id },
-        data: { solved: existingLog.solved + 1 }
-      });
-    } else {
-      await prisma.dailyCodingLog.create({
-        data: { studentId: student.id, platform, date: normalizedDate, solved: 1 }
-      });
-    }
+		// Log for today
+		const now = new Date();
+		const normalizedDate = new Date(
+			Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+		);
+		const existingLog = await prisma.dailyCodingLog.findFirst({
+			where: { studentId: student.id, platform, date: normalizedDate },
+		});
 
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error logging solve:', error);
-    res.status(500).json({ error: 'Failed to log problem solve' });
-  }
+		if (existingLog) {
+			await prisma.dailyCodingLog.update({
+				where: { id: existingLog.id },
+				data: { solved: existingLog.solved + 1 },
+			});
+		} else {
+			await prisma.dailyCodingLog.create({
+				data: { studentId: student.id, platform, date: normalizedDate, solved: 1 },
+			});
+		}
+
+		res.json({ success: true });
+	} catch (error) {
+		console.error("Error logging solve:", error);
+		res.status(500).json({ error: "Failed to log problem solve" });
+	}
 });
 
 export default router;
