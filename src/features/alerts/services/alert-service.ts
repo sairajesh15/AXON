@@ -1,4 +1,4 @@
-import type { AlertType, RiskTier } from "@prisma/client";
+import type { AlertType } from "@prisma/client";
 import { prisma } from "@/database";
 import {
 	calculateClassesCanMiss,
@@ -37,13 +37,6 @@ async function isWithinCooldown(
 	return !!recent;
 }
 
-function isBusinessHours(): boolean {
-	const now = new Date();
-	const day = now.getDay(); // 0 = Sunday, 6 = Saturday
-	const hour = now.getHours();
-	return day >= 1 && day <= 5 && hour >= 8 && hour <= 20;
-}
-
 export async function processAlertForSummary(summaryId: string): Promise<void> {
 	const summary = await prisma.attendanceSummary.findUnique({
 		where: { id: summaryId },
@@ -70,11 +63,6 @@ export async function processAlertForSummary(summaryId: string): Promise<void> {
 				payload: { reason: "cooldown_active" },
 			},
 		});
-		return;
-	}
-
-	if (!isBusinessHours()) {
-		// Queue for next morning — for now log as skipped and let cron pick it up
 		return;
 	}
 

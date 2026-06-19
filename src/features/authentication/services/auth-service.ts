@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { openAPI } from "better-auth/plugins";
+import { admin, openAPI } from "better-auth/plugins";
 import { env } from "@/config/env";
 import { prisma } from "@/database";
 
@@ -20,5 +20,10 @@ export const auth = betterAuth({
 			clientSecret: env.GOOGLE_CLIENT_SECRET,
 		},
 	},
-	plugins: [openAPI()],
+	plugins: [
+		openAPI(),
+		admin({
+			adminUserIds: ["APUM8Ewjj3TT6hXYFO9B4kW4ohZ7TTD7"],
+		}),
+	],
 });

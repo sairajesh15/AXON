@@ -1,7 +1,11 @@
 import { type Router as ExpressRouter, Router } from "express";
 import {
+	getAttendanceForecastHandler,
+	getAttendanceHistoryHandler,
 	getAttendanceSummaryHandler,
+	getAttendanceTrendsHandler,
 	markAttendanceHandler,
+	postAttendanceRecoverHandler,
 } from "@/features/attendance/controllers/attendance-controller";
 
 // Assuming authenticate middleware exists as per instructions.
@@ -17,5 +21,9 @@ const router: ExpressRouter = Router();
 router.post("/", markAttendanceHandler);
 router.get("/summary/:studentId", getAttendanceSummaryHandler);
 router.get("/summary", getAttendanceSummaryHandler);
+router.get("/history/:studentId", getAttendanceHistoryHandler);
+router.get("/trends/:studentId", getAttendanceTrendsHandler);
+router.get("/forecast/:studentId", getAttendanceForecastHandler);
+router.post("/recover/:studentId", postAttendanceRecoverHandler);
 
 export default router;
