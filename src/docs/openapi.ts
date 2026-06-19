@@ -20,6 +20,7 @@ interface OpenApiDocument {
 	paths: Record<string, unknown>;
 	components: {
 		schemas: Record<string, OpenApiSchema>;
+		securitySchemes?: Record<string, unknown>;
 	};
 }
 

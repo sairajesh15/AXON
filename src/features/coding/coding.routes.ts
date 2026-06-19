@@ -55,7 +55,7 @@ router.get('/:id/coding/mappings', async (req, res): Promise<void> => {
   try {
     const id = req.params.id as string;
     const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) return res.status(404).json({ error: 'Student not found' });
+    if (!student) { res.status(404).json({ error: 'Student not found' }); return; }
     const mappings = await prisma.platformUsername.findMany({ where: { studentId: student.id } });
     res.json(mappings);
   } catch (error) {
@@ -135,7 +135,7 @@ router.post('/:id/coding/recommendations', async (req, res): Promise<void> => {
   try {
     const id = req.params.id as string;
     const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) return res.status(404).json({ error: 'Student not found' });
+    if (!student) { res.status(404).json({ error: 'Student not found' }); return; }
     const recommendations = await generateCodingRecommendations(student.id);
     res.json(recommendations);
   } catch (error) {
@@ -155,7 +155,7 @@ router.post('/:id/coding/goal', async (req, res): Promise<void> => {
     }
 
     const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) return res.status(404).json({ error: 'Student not found' });
+    if (!student) { res.status(404).json({ error: 'Student not found' }); return; }
 
     const existing = await prisma.studentGoal.findUnique({ where: { studentId: student.id } });
     if (existing) {
@@ -175,7 +175,7 @@ router.post('/:id/coding/plan', async (req, res): Promise<void> => {
   try {
     const id = req.params.id as string;
     const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) return res.status(404).json({ error: 'Student not found' });
+    if (!student) { res.status(404).json({ error: 'Student not found' }); return; }
     const plan = await generateCodingPlanner(student.id);
     res.json(plan);
   } catch (error) {
@@ -188,7 +188,7 @@ router.get('/:id/coding/plan', async (req, res): Promise<void> => {
   try {
     const id = req.params.id as string;
     const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) return res.status(404).json({ error: 'Student not found' });
+    if (!student) { res.status(404).json({ error: 'Student not found' }); return; }
     const plan = await prisma.studyPlan.findFirst({
       where: { studentId: student.id },
       orderBy: { createdAt: 'desc' }
