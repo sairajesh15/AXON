@@ -53,17 +53,20 @@ router.get("/:id/dashboard", async (req, res): Promise<void> => {
 	}
 });
 
-router.get('/:id/coding/mappings', async (req, res): Promise<void> => {
-  try {
-    const id = req.params.id as string;
-    const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) return res.status(404).json({ error: 'Student not found' });
-    const mappings = await prisma.platformUsername.findMany({ where: { studentId: student.id } });
-    res.json(mappings);
-  } catch (error) {
-    console.error('Error fetching mappings:', error);
-    res.status(500).json({ error: 'Failed to fetch mappings' });
-  }
+router.get("/:id/coding/mappings", async (req, res): Promise<void> => {
+	try {
+		const id = req.params.id as string;
+		const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
+		if (!student) {
+			res.status(404).json({ error: "Student not found" });
+			return;
+		}
+		const mappings = await prisma.platformUsername.findMany({ where: { studentId: student.id } });
+		res.json(mappings);
+	} catch (error) {
+		console.error("Error fetching mappings:", error);
+		res.status(500).json({ error: "Failed to fetch mappings" });
+	}
 });
 
 router.post("/:id/coding/mapping", async (req, res): Promise<void> => {
@@ -140,17 +143,20 @@ router.delete("/:id/coding/mapping/:platform", async (req, res): Promise<void> =
 	}
 });
 
-router.post('/:id/coding/recommendations', async (req, res): Promise<void> => {
-  try {
-    const id = req.params.id as string;
-    const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) return res.status(404).json({ error: 'Student not found' });
-    const recommendations = await generateCodingRecommendations(student.id);
-    res.json(recommendations);
-  } catch (error) {
-    console.error('Error generating recommendations:', error);
-    res.status(500).json({ error: 'Failed to generate recommendations' });
-  }
+router.post("/:id/coding/recommendations", async (req, res): Promise<void> => {
+	try {
+		const id = req.params.id as string;
+		const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
+		if (!student) {
+			res.status(404).json({ error: "Student not found" });
+			return;
+		}
+		const recommendations = await generateCodingRecommendations(student.id);
+		res.json(recommendations);
+	} catch (error) {
+		console.error("Error generating recommendations:", error);
+		res.status(500).json({ error: "Failed to generate recommendations" });
+	}
 });
 
 router.post("/:id/coding/goal", async (req, res): Promise<void> => {
@@ -163,8 +169,11 @@ router.post("/:id/coding/goal", async (req, res): Promise<void> => {
 			return;
 		}
 
-    const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) return res.status(404).json({ error: 'Student not found' });
+		const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
+		if (!student) {
+			res.status(404).json({ error: "Student not found" });
+			return;
+		}
 
 		const existing = await prisma.studentGoal.findUnique({ where: { studentId: student.id } });
 		if (existing) {
@@ -180,33 +189,39 @@ router.post("/:id/coding/goal", async (req, res): Promise<void> => {
 	}
 });
 
-router.post('/:id/coding/plan', async (req, res): Promise<void> => {
-  try {
-    const id = req.params.id as string;
-    const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) return res.status(404).json({ error: 'Student not found' });
-    const plan = await generateCodingPlanner(student.id);
-    res.json(plan);
-  } catch (error) {
-    console.error('Error generating coding plan:', error);
-    res.status(500).json({ error: 'Failed to generate coding plan' });
-  }
+router.post("/:id/coding/plan", async (req, res): Promise<void> => {
+	try {
+		const id = req.params.id as string;
+		const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
+		if (!student) {
+			res.status(404).json({ error: "Student not found" });
+			return;
+		}
+		const plan = await generateCodingPlanner(student.id);
+		res.json(plan);
+	} catch (error) {
+		console.error("Error generating coding plan:", error);
+		res.status(500).json({ error: "Failed to generate coding plan" });
+	}
 });
 
-router.get('/:id/coding/plan', async (req, res): Promise<void> => {
-  try {
-    const id = req.params.id as string;
-    const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
-    if (!student) return res.status(404).json({ error: 'Student not found' });
-    const plan = await prisma.studyPlan.findFirst({
-      where: { studentId: student.id },
-      orderBy: { createdAt: 'desc' }
-    });
-    res.json(plan);
-  } catch (error) {
-    console.error('Error fetching coding plan:', error);
-    res.status(500).json({ error: 'Failed to fetch coding plan' });
-  }
+router.get("/:id/coding/plan", async (req, res): Promise<void> => {
+	try {
+		const id = req.params.id as string;
+		const student = await prisma.student.findFirst({ where: { OR: [{ id }, { userId: id }] } });
+		if (!student) {
+			res.status(404).json({ error: "Student not found" });
+			return;
+		}
+		const plan = await prisma.studyPlan.findFirst({
+			where: { studentId: student.id },
+			orderBy: { createdAt: "desc" },
+		});
+		res.json(plan);
+	} catch (error) {
+		console.error("Error fetching coding plan:", error);
+		res.status(500).json({ error: "Failed to fetch coding plan" });
+	}
 });
 
 router.post("/:id/coding/solve", async (req, res): Promise<void> => {
